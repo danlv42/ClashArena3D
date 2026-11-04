@@ -175,43 +175,69 @@ public static class PixelArt
         }
     }
 
+    private static readonly Dictionary<int, Sprite> actorFrames = new Dictionary<int, Sprite>();
+
     public static Sprite MakeActorSprite(bool player)
     {
+        return MakeActorSprite(player, 0);
+    }
+
+    // Pose: 0 idle, 1/2 run cycle, 3 attack, 4 jump, 5 hurt.
+    public static Sprite MakeActorSprite(bool player, int pose)
+    {
+        int key = (player ? 100 : 0) + pose;
+        Sprite cached;
+        if (actorFrames.TryGetValue(key, out cached) && cached != null) return cached;
+
         const int width = 16;
         const int height = 20;
         Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
         texture.filterMode = FilterMode.Point;
         Color clear = new Color(0, 0, 0, 0);
-        Color outline = new Color(0.12f, 0.10f, 0.16f);
+        Color outline = new Color(0.10f, 0.08f, 0.14f);
         Color skin = new Color(1f, 0.72f, 0.48f);
         Color cloth = player ? new Color(0.22f, 0.42f, 0.98f) : new Color(0.82f, 0.24f, 0.28f);
+        Color darkCloth = player ? new Color(0.10f, 0.20f, 0.52f) : new Color(0.35f, 0.10f, 0.20f);
+
+        int bodyBottom = pose == 4 ? 5 : 4;
+        int legShiftA = pose == 1 ? -2 : (pose == 2 ? 2 : 0);
+        int legShiftB = -legShiftA;
+        int armY = pose == 3 ? 10 : (pose == 4 ? 12 : 8);
 
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                bool body = x >= 3 && x <= 12 && y >= 2 && y <= 13;
-                bool head = x >= 4 && x <= 11 && y >= 13 && y <= 18;
-                bool feet = y <= 2 && ((x >= 2 && x <= 6) || (x >= 9 && x <= 13));
                 Color pixel = clear;
+                bool head = x >= 4 && x <= 11 && y >= 14 && y <= 18;
+                bool body = x >= 4 && x <= 11 && y >= bodyBottom && y <= 13;
+                bool leftLeg = x >= 4 + legShiftA && x <= 6 + legShiftA && y >= 1 && y <= bodyBottom;
+                bool rightLeg = x >= 9 + legShiftB && x <= 11 + legShiftB && y >= 1 && y <= bodyBottom;
+                bool leftArm = x >= 1 && x <= 4 && y >= armY - 2 && y <= armY;
+                bool rightArm = pose == 3 ? (x >= 11 && x <= 15 && y >= armY && y <= armY + 2)
+                                           : (x >= 11 && x <= 14 && y >= armY - 2 && y <= armY);
 
-                if (body || head || feet)
+                if (head) pixel = (x == 4 || x == 11 || y == 18) ? outline : skin;
+                if (body) pixel = (x == 4 || x == 11 || y == bodyBottom) ? outline : cloth;
+                if (leftLeg || rightLeg)
                 {
-                    bool edge = (body && (x == 3 || x == 12 || y == 2 || y == 13)) ||
-                                (head && (x == 4 || x == 11 || y == 13 || y == 18)) ||
-                                (feet && y == 0);
-                    pixel = edge ? outline : (head ? skin : (feet ? outline : cloth));
+                    bool foot = y <= 2;
+                    pixel = foot ? outline : darkCloth;
                 }
+                if (leftArm || rightArm) pixel = (x == 1 || x == 14 || y == armY - 2) ? outline : cloth;
+                if (head && y >= 15 && (x == 7 || x == 10)) pixel = outline;
 
-                if (head && y >= 15 && (x == 6 || x == 10)) pixel = outline;
-                if (player && y == 18 && x >= 3 && x <= 12) pixel = new Color(0.12f, 0.16f, 0.42f);
-                if (!player && y == 17 && x >= 3 && x <= 12) pixel = new Color(0.24f, 0.12f, 0.24f);
+                if (pose == 3 && x == 15 && y == armY + 2) pixel = new Color(1f, 0.9f, 0.35f);
+                if (pose == 5 && (x == 2 || x == 13) && y == 16) pixel = new Color(1f, 0.35f, 0.25f);
+                if (player && y == 18 && x >= 4 && x <= 11) pixel = darkCloth;
 
                 texture.SetPixel(x, y, pixel);
             }
         }
 
         texture.Apply();
-        return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.35f), 16f);
+        Sprite frame = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.35f), 16f);
+        actorFrames[key] = frame;
+        return frame;
     }
 }
