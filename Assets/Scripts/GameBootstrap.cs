@@ -38,7 +38,7 @@ public sealed class GameBootstrap : MonoBehaviour
         camera.orthographic = true;
         camera.orthographicSize = 5.2f;
         camera.transform.position = new Vector3(0f, 1.2f, -10f);
-        camera.backgroundColor = new Color(0.43f, 0.72f, 0.91f);
+        camera.backgroundColor = new Color(0.08f, 0.36f, 0.94f);
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.gameObject.AddComponent<AudioListener>();
         camera.gameObject.AddComponent<CameraFollow>();
@@ -93,7 +93,7 @@ public sealed class GameBootstrap : MonoBehaviour
         renderer.sprite = PixelArt.MakeCrateSprite();
         renderer.sortingOrder = 3;
         BoxCollider2D collider = crate.AddComponent<BoxCollider2D>();
-        collider.size = new Vector2(width, 1.05f);
+        collider.size = Vector2.one;
         crate.transform.localScale = new Vector3(width, 1.05f, 1f);
     }
 
