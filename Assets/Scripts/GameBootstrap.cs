@@ -43,7 +43,7 @@ public sealed class GameBootstrap : MonoBehaviour
         camera.gameObject.AddComponent<AudioListener>();
         camera.gameObject.AddComponent<CameraFollow>();
 
-        CreatePlatform(new Vector2(34f, -3.35f), new Vector2(78f, 1.2f), new Color(0.28f, 0.62f, 0.30f));
+        CreatePlatform(new Vector2(40f, -3.35f), new Vector2(100f, 1.2f), new Color(0.28f, 0.62f, 0.30f));
         CreatePlatform(new Vector2(7f, -0.9f), new Vector2(4.2f, 0.55f), new Color(0.54f, 0.36f, 0.20f));
         CreatePlatform(new Vector2(17f, 0.25f), new Vector2(4.0f, 0.55f), new Color(0.54f, 0.36f, 0.20f));
         CreatePlatform(new Vector2(29f, -0.45f), new Vector2(5.0f, 0.55f), new Color(0.54f, 0.36f, 0.20f));
@@ -169,7 +169,7 @@ public static class PixelArt
                 texture.SetPixel(0, 0, Color.white);
                 texture.filterMode = FilterMode.Point;
                 texture.Apply();
-                whiteSprite = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 16f);
+                whiteSprite = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
             }
             return whiteSprite;
         }
@@ -231,8 +231,7 @@ public sealed class PlayerController : MonoBehaviour
     private float attackReadyAt;
     private float invulnerableUntil;
     private bool grounded;
-    private bool abilityUsed;
-    private string statusMessage = "Defeat 10 enemies to charge your special!";
+        private string statusMessage = "Defeat 10 enemies to charge your special!";
     private float statusUntil;
 
     public int Kills { get { return kills; } }
@@ -267,7 +266,7 @@ public sealed class PlayerController : MonoBehaviour
             spriteRenderer.flipX = facing < 0;
         }
 
-        grounded = Mathf.Abs(body.velocity.y) < 0.08f && Physics2D.Raycast(transform.position, Vector2.down, 0.62f, LayerMask.GetMask("Default"));
+        grounded = Mathf.Abs(body.velocity.y) < 0.08f && Physics2D.Raycast(transform.position, Vector2.down, 0.8f, LayerMask.GetMask("Default"));
         if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) && grounded)
         {
             body.velocity = new Vector2(body.velocity.x, jumpForce);
@@ -314,7 +313,6 @@ public sealed class PlayerController : MonoBehaviour
         }
 
         kills -= killsToCharge;
-        abilityUsed = true;
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 4.5f);
         int defeated = 0;
