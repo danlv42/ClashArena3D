@@ -53,6 +53,16 @@ public sealed class GameBootstrap : MonoBehaviour
 
         CreateBackdrop();
 
+        // Original platforming obstacles: thorn beds to jump over and solid crates to climb around.
+        CreateSpikePatch(10.5f, 2.2f);
+        CreateCrate(16f, 0.8f);
+        CreateSpikePatch(26.5f, 2.0f);
+        CreateCrate(34f, 0.9f);
+        CreateSpikePatch(46f, 2.4f);
+        CreateCrate(58f, 0.8f);
+        CreateSpikePatch(66f, 2.0f);
+        CreateCrate(73.5f, 0.9f);
+
         GameObject playerObject = CreateActor("Player", new Vector2(0f, -2.1f), new Color(0.20f, 0.34f, 0.92f), true);
         PlayerController player = playerObject.AddComponent<PlayerController>();
         player.SetCamera(camera);
@@ -75,6 +85,32 @@ public sealed class GameBootstrap : MonoBehaviour
         CreateSign(new Vector2(2.6f, -1.8f), "10 KILLS = POWER");
     }
 
+    private void CreateCrate(float x, float width)
+    {
+        GameObject crate = new GameObject("Wooden_Crate");
+        crate.transform.position = new Vector3(x, -2.18f, 0f);
+        SpriteRenderer renderer = crate.AddComponent<SpriteRenderer>();
+        renderer.sprite = PixelArt.MakeCrateSprite();
+        renderer.sortingOrder = 3;
+        BoxCollider2D collider = crate.AddComponent<BoxCollider2D>();
+        collider.size = new Vector2(width, 1.05f);
+        crate.transform.localScale = new Vector3(width, 1.05f, 1f);
+    }
+
+    private void CreateSpikePatch(float x, float width)
+    {
+        GameObject spikes = new GameObject("Thorn_Patch");
+        spikes.transform.position = new Vector3(x, -2.57f, 0f);
+        SpriteRenderer renderer = spikes.AddComponent<SpriteRenderer>();
+        renderer.sprite = PixelArt.MakeSpikeSprite();
+        renderer.sortingOrder = 4;
+        spikes.transform.localScale = new Vector3(width, 0.42f, 1f);
+        BoxCollider2D collider = spikes.AddComponent<BoxCollider2D>();
+        collider.isTrigger = true;
+        collider.size = new Vector2(1f, 1f);
+        spikes.AddComponent<Hazard>();
+    }
+
     private GameObject CreateActor(string actorName, Vector2 position, Color color, bool isPlayer)
     {
         GameObject actor = new GameObject(actorName);
@@ -86,7 +122,7 @@ public sealed class GameBootstrap : MonoBehaviour
         renderer.sortingOrder = 5;
 
         BoxCollider2D collider = actor.AddComponent<BoxCollider2D>();
-        collider.size = isPlayer ? new Vector2(0.72f, 0.95f) : new Vector2(0.72f, 0.78f);
+        collider.size = isPlayer ? new Vector2(0.68f, 1.12f) : new Vector2(0.72f, 0.78f);
 
         Rigidbody2D body = actor.AddComponent<Rigidbody2D>();
         body.freezeRotation = true;
@@ -194,16 +230,17 @@ public static class PixelArt
         Sprite cached;
         if (actorFrames.TryGetValue(key, out cached) && cached != null) return cached;
 
-        const int width = 20;
-        const int height = 24;
+        const int width = 24;
+        const int height = 26;
         Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
         texture.filterMode = FilterMode.Point;
         Color clear = new Color(0, 0, 0, 0);
-        Color outline = new Color(0.08f, 0.08f, 0.12f);
-        Color suit = new Color(0.94f, 0.93f, 0.86f);
+        Color outline = new Color(0.07f, 0.06f, 0.10f);
+        Color suit = new Color(0.95f, 0.94f, 0.88f);
         Color shade = new Color(0.62f, 0.68f, 0.76f);
         Color skin = new Color(0.72f, 0.43f, 0.30f);
-        Color black = new Color(0.08f, 0.08f, 0.12f);
+        Color hair = new Color(0.08f, 0.06f, 0.06f);
+        Color black = new Color(0.07f, 0.07f, 0.10f);
         int legA = pose == 1 ? -3 : (pose == 2 ? 3 : (pose == 3 ? -2 : 0));
         int legB = -legA;
         int armRaise = pose == 3 || pose == 4 ? 3 : 0;
@@ -212,40 +249,93 @@ public static class PixelArt
         for (int x = 0; x < width; x++)
         {
             Color px = clear;
-            bool head = x >= 6 && x <= 13 && y >= 16 && y <= 20;
-            bool torso = x >= 6 && x <= 13 && y >= 7 && y <= 15;
-            bool leftArm = x >= 2 && x <= 6 && y >= 10 + armRaise && y <= 15 + armRaise;
-            bool rightArm = x >= 13 && x <= 18 && y >= 10 && y <= 15 + (pose == 3 ? 2 : 0);
-            bool leftLeg = x >= 6 + legA && x <= 9 + legA && y >= 2 && y <= 7;
-            bool rightLeg = x >= 10 + legB && x <= 13 + legB && y >= 2 && y <= 7;
 
-            if (head) px = (x == 6 || x == 13 || y == 16) ? outline : skin;
-            if (torso) px = (x == 6 || x == 13 || y == 7) ? outline : ((x == 9 || x == 10) ? shade : suit);
-            if (leftArm || rightArm) px = (x == 2 || x == 18 || y == 10 + armRaise) ? outline : suit;
-            if (leftLeg || rightLeg) px = (x == 6 + legA || x == 13 + legB) ? shade : suit;
-            if (y == 1 && ((x >= 4 + legA && x <= 9 + legA) || (x >= 10 + legB && x <= 15 + legB))) px = black;
-            if (y == 0 && ((x >= 3 + legA && x <= 9 + legA) || (x >= 10 + legB && x <= 16 + legB))) px = outline;
+            // Oversized expressive head, curls, and compact torso.
+            bool head = x >= 5 && x <= 18 && y >= 14 && y <= 22;
+            bool curls = y >= 16 && y <= 22 &&
+                ((x >= 3 && x <= 5) || (x >= 18 && x <= 20) ||
+                 (y >= 20 && y <= 22 && x >= 6 && x <= 17));
+            bool torso = x >= 8 && x <= 15 && y >= 7 && y <= 14;
+            bool leftArm = x >= 4 && x <= 8 && y >= 9 + armRaise && y <= 14 + armRaise;
+            bool rightArm = x >= 15 && x <= 20 && y >= 9 && y <= 14 + (pose == 3 ? 2 : 0);
+            bool leftLeg = x >= 8 + legA && x <= 10 + legA && y >= 2 && y <= 7;
+            bool rightLeg = x >= 13 + legB && x <= 15 + legB && y >= 2 && y <= 7;
 
-            // White fedora with a dark ribbon.
-            if (y == 21 && x >= 5 && x <= 14) px = suit;
-            if (y == 22 && x >= 7 && x <= 12) px = suit;
-            if (y == 21 && x >= 7 && x <= 12) px = black;
-            if (y == 20 && x >= 4 && x <= 15) px = outline;
-            if (y == 19 && x >= 7 && x <= 12) px = outline;
+            if (curls) px = hair;
+            if (head) px = (x == 5 || x == 18 || y == 14 || y == 22) ? outline : skin;
+            if (torso) px = (x == 8 || x == 15 || y == 7) ? outline : ((x == 11 || x == 12) ? shade : suit);
+            if (leftArm || rightArm) px = (x == 4 || x == 20) ? outline : suit;
+            if (leftLeg || rightLeg) px = (x == 8 + legA || x == 15 + legB) ? shade : suit;
+            if (y == 1 && ((x >= 6 + legA && x <= 11 + legA) || (x >= 12 + legB && x <= 17 + legB))) px = black;
+            if (y == 0 && ((x >= 5 + legA && x <= 11 + legA) || (x >= 12 + legB && x <= 18 + legB))) px = outline;
 
-            // Black tie, belt and tiny face details.
-            if (x == 10 && y >= 11 && y <= 14) px = black;
-            if (y == 8 && x >= 7 && x <= 12) px = black;
-            if (x == 8 && y == 18) px = outline;
-            if (pose == 3 && x >= 18 && y >= 13 && y <= 16) px = new Color(1f, 0.86f, 0.3f);
+            // Fedora: broad brim, crown and dark band.
+            if (y == 23 && x >= 3 && x <= 20) px = outline;
+            if (y == 24 && x >= 6 && x <= 17) px = suit;
+            if (y == 25 && x >= 8 && x <= 15) px = suit;
+            if (y == 24 && x >= 8 && x <= 15) px = black;
+
+            // Face, tie and signature white glove.
+            if (x == 9 && y == 18) px = outline;
+            if (x == 14 && y == 18) px = outline;
+            if (x >= 11 && x <= 12 && y >= 10 && y <= 13) px = black;
+            if (pose == 3 && x >= 20 && y >= 12 && y <= 15) px = new Color(1f, 0.86f, 0.3f);
+            if (pose == 5 && x == 20 && y == 19) px = new Color(1f, 0.35f, 0.25f);
 
             texture.SetPixel(x, y, px);
         }
 
         texture.Apply();
-        Sprite frame = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.25f), 20f);
+        Sprite frame = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.12f), 20f);
         actorFrames[key] = frame;
         return frame;
+    }
+
+    public static Sprite MakeCrateSprite()
+    {
+        const int w = 16, h = 16;
+        Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        t.filterMode = FilterMode.Point;
+        Color wood = new Color(0.48f, 0.25f, 0.10f);
+        Color light = new Color(0.72f, 0.43f, 0.19f);
+        Color dark = new Color(0.18f, 0.10f, 0.06f);
+        for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+        {
+            Color px = (x == 0 || y == 0 || x == 15 || y == 15) ? dark : wood;
+            if (x == y || x == 15 - y) px = light;
+            if (x == 7 || x == 8 || y == 7 || y == 8) px = dark;
+            if ((x == 2 || x == 13) && (y == 2 || y == 13)) px = light;
+            t.SetPixel(x, y, px);
+        }
+        t.Apply();
+        return Sprite.Create(t, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 16f);
+    }
+
+    public static Sprite MakeSpikeSprite()
+    {
+        const int w = 24, h = 10;
+        Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        t.filterMode = FilterMode.Point;
+        Color clear = new Color(0, 0, 0, 0);
+        Color thorn = new Color(0.16f, 0.28f, 0.12f);
+        Color tip = new Color(0.82f, 0.88f, 0.58f);
+        for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+        {
+            Color px = clear;
+            if (y <= 1) px = thorn;
+            for (int spike = 0; spike < 4; spike++)
+            {
+                int center = 3 + spike * 6;
+                int height = 5 + (spike % 2) * 2;
+                int distance = Mathf.Abs(x - center);
+                if (distance <= 2 && y >= 2 && y <= height - distance) px = y == height - distance ? tip : thorn;
+            }
+            t.SetPixel(x, y, px);
+        }
+        t.Apply();
+        return Sprite.Create(t, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 16f);
     }
 
     public static Sprite MakeTerrainSprite(Vector2 worldSize, Color baseColor)
