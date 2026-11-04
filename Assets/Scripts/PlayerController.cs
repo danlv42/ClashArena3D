@@ -155,6 +155,12 @@ public sealed class PlayerController : MonoBehaviour
         }
     }
 
+    public void HitHazard()
+    {
+        if (Time.time > invulnerableUntil)
+            TakeHit();
+    }
+
     private void TakeHit()
     {
         health--;
