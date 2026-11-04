@@ -82,7 +82,7 @@ public sealed class GameBootstrap : MonoBehaviour
 
         SpriteRenderer renderer = actor.AddComponent<SpriteRenderer>();
         renderer.sprite = PixelArt.MakeActorSprite(isPlayer);
-        renderer.color = color;
+        renderer.color = isPlayer ? Color.white : color;
         renderer.sortingOrder = 5;
 
         BoxCollider2D collider = actor.AddComponent<BoxCollider2D>();
@@ -101,15 +101,14 @@ public sealed class GameBootstrap : MonoBehaviour
     {
         GameObject platform = new GameObject("Platform");
         platform.transform.position = position;
-        platform.transform.localScale = new Vector3(size.x, size.y, 1f);
 
         SpriteRenderer renderer = platform.AddComponent<SpriteRenderer>();
-        renderer.sprite = PixelArt.WhiteSprite;
-        renderer.color = color;
+        renderer.sprite = PixelArt.MakeTerrainSprite(size, color);
+        renderer.color = Color.white;
         renderer.sortingOrder = 0;
 
         BoxCollider2D collider = platform.AddComponent<BoxCollider2D>();
-        collider.size = Vector2.one;
+        collider.size = size;
         collider.sharedMaterial = new PhysicsMaterial2D("Platform_Friction") { friction = 0.8f, bounciness = 0f };
     }
 
@@ -120,10 +119,9 @@ public sealed class GameBootstrap : MonoBehaviour
             float x = i * 7.5f - 3f;
             GameObject hill = new GameObject("Distant_Hill");
             hill.transform.position = new Vector3(x, -2.65f, 2f);
-            hill.transform.localScale = new Vector3(8f, 2.4f, 1f);
+            hill.transform.localScale = new Vector3(1.8f, 1.8f, 1f);
             SpriteRenderer renderer = hill.AddComponent<SpriteRenderer>();
-            renderer.sprite = PixelArt.WhiteSprite;
-            renderer.color = new Color(0.34f, 0.66f, 0.58f, 0.55f);
+            renderer.sprite = PixelArt.MakeMountainSprite(i);
             renderer.sortingOrder = -2;
         }
 
@@ -132,11 +130,19 @@ public sealed class GameBootstrap : MonoBehaviour
             float x = i * 8f + 1f;
             GameObject cloud = new GameObject("Cloud");
             cloud.transform.position = new Vector3(x, 3.2f + (i % 3) * 0.55f, 3f);
-            cloud.transform.localScale = new Vector3(1.8f, 0.55f, 1f);
             SpriteRenderer renderer = cloud.AddComponent<SpriteRenderer>();
-            renderer.sprite = PixelArt.WhiteSprite;
-            renderer.color = new Color(1f, 1f, 1f, 0.72f);
+            renderer.sprite = PixelArt.MakeCloudSprite();
             renderer.sortingOrder = -1;
+        }
+
+        for (int i = 0; i < 18; i++)
+        {
+            float x = i * 5.2f + 2f;
+            GameObject tree = new GameObject("Pixel_Tree");
+            tree.transform.position = new Vector3(x, -1.65f, 1f);
+            SpriteRenderer renderer = tree.AddComponent<SpriteRenderer>();
+            renderer.sprite = PixelArt.MakeTreeSprite(i);
+            renderer.sortingOrder = 1;
         }
     }
 
@@ -182,9 +188,150 @@ public static class PixelArt
         return MakeActorSprite(player, 0);
     }
 
+    private static Sprite MakeDancerSprite(int pose)
+    {
+        int key = 1000 + pose;
+        Sprite cached;
+        if (actorFrames.TryGetValue(key, out cached) && cached != null) return cached;
+
+        const int width = 20;
+        const int height = 24;
+        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        texture.filterMode = FilterMode.Point;
+        Color clear = new Color(0, 0, 0, 0);
+        Color outline = new Color(0.08f, 0.08f, 0.12f);
+        Color suit = new Color(0.94f, 0.93f, 0.86f);
+        Color shade = new Color(0.62f, 0.68f, 0.76f);
+        Color skin = new Color(0.72f, 0.43f, 0.30f);
+        Color black = new Color(0.08f, 0.08f, 0.12f);
+        int legA = pose == 1 ? -3 : (pose == 2 ? 3 : (pose == 3 ? -2 : 0));
+        int legB = -legA;
+        int armRaise = pose == 3 || pose == 4 ? 3 : 0;
+
+        for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            Color px = clear;
+            bool head = x >= 6 && x <= 13 && y >= 16 && y <= 20;
+            bool torso = x >= 6 && x <= 13 && y >= 7 && y <= 15;
+            bool leftArm = x >= 2 && x <= 6 && y >= 10 + armRaise && y <= 15 + armRaise;
+            bool rightArm = x >= 13 && x <= 18 && y >= 10 && y <= 15 + (pose == 3 ? 2 : 0);
+            bool leftLeg = x >= 6 + legA && x <= 9 + legA && y >= 2 && y <= 7;
+            bool rightLeg = x >= 10 + legB && x <= 13 + legB && y >= 2 && y <= 7;
+
+            if (head) px = (x == 6 || x == 13 || y == 16) ? outline : skin;
+            if (torso) px = (x == 6 || x == 13 || y == 7) ? outline : ((x == 9 || x == 10) ? shade : suit);
+            if (leftArm || rightArm) px = (x == 2 || x == 18 || y == 10 + armRaise) ? outline : suit;
+            if (leftLeg || rightLeg) px = (x == 6 + legA || x == 13 + legB) ? shade : suit;
+            if (y == 1 && ((x >= 4 + legA && x <= 9 + legA) || (x >= 10 + legB && x <= 15 + legB))) px = black;
+            if (y == 0 && ((x >= 3 + legA && x <= 9 + legA) || (x >= 10 + legB && x <= 16 + legB))) px = outline;
+
+            // White fedora with a dark ribbon.
+            if (y == 21 && x >= 5 && x <= 14) px = suit;
+            if (y == 22 && x >= 7 && x <= 12) px = suit;
+            if (y == 21 && x >= 7 && x <= 12) px = black;
+            if (y == 20 && x >= 4 && x <= 15) px = outline;
+            if (y == 19 && x >= 7 && x <= 12) px = outline;
+
+            // Black tie, belt and tiny face details.
+            if (x == 10 && y >= 11 && y <= 14) px = black;
+            if (y == 8 && x >= 7 && x <= 12) px = black;
+            if (x == 8 && y == 18) px = outline;
+            if (pose == 3 && x >= 18 && y >= 13 && y <= 16) px = new Color(1f, 0.86f, 0.3f);
+
+            texture.SetPixel(x, y, px);
+        }
+
+        texture.Apply();
+        Sprite frame = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.25f), 20f);
+        actorFrames[key] = frame;
+        return frame;
+    }
+
+    public static Sprite MakeTerrainSprite(Vector2 worldSize, Color baseColor)
+    {
+        int width = Mathf.Clamp(Mathf.CeilToInt(worldSize.x * 16f), 16, 2048);
+        int height = Mathf.Clamp(Mathf.CeilToInt(worldSize.y * 16f), 8, 64);
+        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        texture.filterMode = FilterMode.Point;
+        Color grass = new Color(0.18f, 0.58f, 0.20f);
+        Color brightGrass = new Color(0.38f, 0.78f, 0.25f);
+        Color soil = baseColor;
+        Color darkSoil = new Color(baseColor.r * 0.58f, baseColor.g * 0.55f, baseColor.b * 0.5f);
+        for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            Color px = y >= height - 4 ? grass : soil;
+            if (y == height - 1 && (x % 7 < 5)) px = brightGrass;
+            if (y < height - 4 && ((x * 17 + y * 31) % 29 == 0)) px = darkSoil;
+            if (y < height - 4 && ((x * 11 + y * 7) % 47 == 0)) px = new Color(0.72f, 0.48f, 0.28f);
+            if (y == height - 5 && x % 13 < 2) px = darkSoil;
+            texture.SetPixel(x, y, px);
+        }
+        texture.Apply();
+        return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 16f);
+    }
+
+    public static Sprite MakeMountainSprite(int seed)
+    {
+        const int w = 48, h = 32;
+        Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        t.filterMode = FilterMode.Point;
+        Color clear = new Color(0,0,0,0);
+        Color mountain = new Color(0.35f,0.60f,0.61f,0.8f);
+        Color snow = new Color(0.72f,0.82f,0.78f,0.85f);
+        int peak = 22 + seed % 8;
+        for (int y=0;y<h;y++)
+        for (int x=0;x<w;x++)
+        {
+            int ridge = peak - Mathf.Abs(x-24)/2;
+            Color px = y < ridge ? clear : mountain;
+            if (y >= ridge && y < ridge + 3 && (x < 24 ? x > 19-(ridge-y) : x < 29+(ridge-y))) px = snow;
+            t.SetPixel(x,y,px);
+        }
+        t.Apply();
+        return Sprite.Create(t,new Rect(0,0,w,h),new Vector2(0.5f,0.5f),16f);
+    }
+
+    public static Sprite MakeCloudSprite()
+    {
+        const int w=32,h=12;
+        Texture2D t=new Texture2D(w,h,TextureFormat.RGBA32,false);
+        t.filterMode=FilterMode.Point;
+        Color clear=new Color(0,0,0,0), cloud=new Color(0.94f,0.97f,1f,0.9f);
+        for(int y=0;y<h;y++) for(int x=0;x<w;x++)
+        {
+            bool body=(y>=2&&y<=7&&x>=3&&x<=28)||(y>=5&&y<=10&&x>=8&&x<=22);
+            t.SetPixel(x,y,body?cloud:clear);
+        }
+        t.Apply();
+        return Sprite.Create(t,new Rect(0,0,w,h),new Vector2(0.5f,0.5f),16f);
+    }
+
+    public static Sprite MakeTreeSprite(int seed)
+    {
+        const int w=24,h=40;
+        Texture2D t=new Texture2D(w,h,TextureFormat.RGBA32,false);
+        t.filterMode=FilterMode.Point;
+        Color clear=new Color(0,0,0,0), trunk=new Color(0.34f,0.18f,0.09f), leaf=new Color(0.08f,0.40f,0.16f), light=new Color(0.22f,0.62f,0.20f);
+        for(int y=0;y<h;y++) for(int x=0;x<w;x++)
+        {
+            Color px=clear;
+            if(x>=10&&x<=13&&y<25) px=trunk;
+            int dx=x-12, dy=y-28;
+            int radius=8+(seed%3);
+            if(dx*dx+dy*dy<radius*radius) px=((x*7+y*3+seed)%5==0)?light:leaf;
+            if(y==39&&x>=8&&x<=15) px=light;
+            t.SetPixel(x,y,px);
+        }
+        t.Apply();
+        return Sprite.Create(t,new Rect(0,0,w,h),new Vector2(0.5f,0f),16f);
+    }
+
     // Pose: 0 idle, 1/2 run cycle, 3 attack, 4 jump, 5 hurt.
     public static Sprite MakeActorSprite(bool player, int pose)
     {
+        if (player) return MakeDancerSprite(pose);
         int key = (player ? 100 : 0) + pose;
         Sprite cached;
         if (actorFrames.TryGetValue(key, out cached) && cached != null) return cached;
