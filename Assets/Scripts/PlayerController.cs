@@ -11,11 +11,13 @@ public sealed class PlayerController : MonoBehaviour
     private CameraFollow cameraFollow;
     private int facing = 1;
     private int kills;
-    private int health = 3;
+    private int health = 5;
     private float attackReadyAt;
+    private float attackAnimationUntil;
     private float invulnerableUntil;
+    private float hurtAnimationUntil;
     private bool grounded;
-        private string statusMessage = "Defeat 10 enemies to charge your special!";
+    private string statusMessage = "Defeat 10 enemies to charge your special!";
     private float statusUntil;
 
     public int Kills { get { return kills; } }
@@ -50,11 +52,11 @@ public sealed class PlayerController : MonoBehaviour
             spriteRenderer.flipX = facing < 0;
         }
 
-        grounded = Mathf.Abs(body.velocity.y) < 0.08f && Physics2D.Raycast(transform.position, Vector2.down, 0.8f, LayerMask.GetMask("Default"));
+        grounded = Mathf.Abs(body.velocity.y) < 0.08f &&
+                   Physics2D.Raycast(transform.position, Vector2.down, 0.8f, LayerMask.GetMask("Default"));
+
         if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) && grounded)
-        {
             body.velocity = new Vector2(body.velocity.x, jumpForce);
-        }
 
         if (Input.GetKeyDown(KeyCode.J) || Input.GetKeyDown(KeyCode.Z))
             Attack();
@@ -62,14 +64,31 @@ public sealed class PlayerController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.K) || Input.GetKeyDown(KeyCode.X))
             UseAbility();
 
+        UpdateAnimation(horizontal);
+
         if (transform.position.y < -12f)
             Respawn();
+    }
+
+    private void UpdateAnimation(float horizontal)
+    {
+        int pose;
+        if (Time.time < attackAnimationUntil) pose = 3;
+        else if (Time.time < hurtAnimationUntil) pose = 5;
+        else if (!grounded) pose = 4;
+        else if (Mathf.Abs(horizontal) > 0.1f) pose = (Mathf.FloorToInt(Time.time * 10f) % 2 == 0) ? 1 : 2;
+        else pose = 0;
+
+        spriteRenderer.sprite = PixelArt.MakeActorSprite(true, pose);
+        spriteRenderer.color = (Time.time < invulnerableUntil && Mathf.FloorToInt(Time.time * 18f) % 2 == 0)
+            ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
     }
 
     private void Attack()
     {
         if (Time.time < attackReadyAt) return;
-        attackReadyAt = Time.time + 0.28f;
+        attackReadyAt = Time.time + 0.38f;
+        attackAnimationUntil = Time.time + 0.24f;
 
         Vector2 center = (Vector2)transform.position + new Vector2(facing * 0.88f, 0.05f);
         Collider2D[] hits = Physics2D.OverlapCircleAll(center, 1.15f);
@@ -80,7 +99,7 @@ public sealed class PlayerController : MonoBehaviour
             EnemyWalker enemy = hit.GetComponent<EnemyWalker>();
             if (enemy != null)
             {
-                enemy.Defeat();
+                enemy.TakeDamage(1);
                 hitSomething = true;
             }
         }
@@ -97,21 +116,21 @@ public sealed class PlayerController : MonoBehaviour
         }
 
         kills -= killsToCharge;
-
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 4.5f);
-        int defeated = 0;
+        int damaged = 0;
         foreach (Collider2D hit in hits)
         {
             EnemyWalker enemy = hit.GetComponent<EnemyWalker>();
             if (enemy != null)
             {
-                enemy.Defeat();
-                defeated++;
+                enemy.TakeDamage(3);
+                damaged++;
             }
         }
 
         body.velocity = new Vector2(body.velocity.x, Mathf.Max(body.velocity.y, 3f));
-        ShowStatus("POWER BURST! " + defeated + " enemies hit");
+        attackAnimationUntil = Time.time + 0.3f;
+        ShowStatus("POWER BURST! " + damaged + " enemies hit");
     }
 
     public void RegisterKill()
@@ -127,7 +146,7 @@ public sealed class PlayerController : MonoBehaviour
     {
         if (body.velocity.y < -0.5f && transform.position.y > enemy.transform.position.y + 0.15f)
         {
-            enemy.Defeat();
+            enemy.TakeDamage(1);
             body.velocity = new Vector2(body.velocity.x, jumpForce * 0.72f);
         }
         else if (Time.time > invulnerableUntil)
@@ -140,6 +159,7 @@ public sealed class PlayerController : MonoBehaviour
     {
         health--;
         invulnerableUntil = Time.time + 1.1f;
+        hurtAnimationUntil = Time.time + 0.25f;
         body.velocity = new Vector2(-facing * 5f, 5.5f);
         ShowStatus("Ouch! HP: " + health);
 
@@ -149,7 +169,7 @@ public sealed class PlayerController : MonoBehaviour
 
     private void Respawn()
     {
-        health = 3;
+        health = 5;
         transform.position = new Vector3(0f, -1.8f, 0f);
         body.velocity = Vector2.zero;
         invulnerableUntil = Time.time + 1.5f;
