@@ -150,35 +150,61 @@ public sealed class GameBootstrap : MonoBehaviour
 
     private void CreateBackdrop()
     {
-        for (int i = 0; i < 14; i++)
-        {
-            float x = i * 7.5f - 3f;
-            GameObject hill = new GameObject("Distant_Hill");
-            hill.transform.position = new Vector3(x, -2.65f, 2f);
-            hill.transform.localScale = new Vector3(1.8f, 1.8f, 1f);
-            SpriteRenderer renderer = hill.AddComponent<SpriteRenderer>();
-            renderer.sprite = PixelArt.MakeMountainSprite(i);
-            renderer.sortingOrder = -2;
-        }
-
-        for (int i = 0; i < 12; i++)
-        {
-            float x = i * 8f + 1f;
-            GameObject cloud = new GameObject("Cloud");
-            cloud.transform.position = new Vector3(x, 3.2f + (i % 3) * 0.55f, 3f);
-            SpriteRenderer renderer = cloud.AddComponent<SpriteRenderer>();
-            renderer.sprite = PixelArt.MakeCloudSprite();
-            renderer.sortingOrder = -1;
-        }
-
+        // Layered mountain valley, distant pine forest and bright pixel sky.
         for (int i = 0; i < 18; i++)
         {
-            float x = i * 5.2f + 2f;
+            float x = i * 6.2f - 4f;
+            GameObject mountain = new GameObject("Far_Mountain");
+            mountain.transform.position = new Vector3(x, -1.8f + (i % 3) * 0.22f, 3.2f);
+            mountain.transform.localScale = new Vector3(3.2f, 3.0f, 1f);
+            SpriteRenderer mr = mountain.AddComponent<SpriteRenderer>();
+            mr.sprite = PixelArt.MakeMountainSprite(i);
+            mr.sortingOrder = -5;
+
+            GameObject pine = new GameObject("Distant_Pine");
+            pine.transform.position = new Vector3(x + 2.8f, -2.15f, 2.6f);
+            pine.transform.localScale = new Vector3(1.1f, 2.0f, 1f);
+            SpriteRenderer pr = pine.AddComponent<SpriteRenderer>();
+            pr.sprite = PixelArt.MakePineSprite(i);
+            pr.sortingOrder = -4;
+        }
+
+        GameObject sun = new GameObject("Pixel_Sun");
+        sun.transform.position = new Vector3(9f, 3.15f, 2.4f);
+        sun.transform.localScale = new Vector3(1.5f, 1.5f, 1f);
+        SpriteRenderer sr = sun.AddComponent<SpriteRenderer>();
+        sr.sprite = PixelArt.MakeSunSprite();
+        sr.sortingOrder = -3;
+
+        for (int i = 0; i < 14; i++)
+        {
+            float x = i * 7.6f + 1f;
+            GameObject cloud = new GameObject("Cloud");
+            cloud.transform.position = new Vector3(x, 3.0f + (i % 4) * 0.65f, 3f);
+            cloud.transform.localScale = new Vector3(2.0f, 1.1f, 1f);
+            SpriteRenderer cr = cloud.AddComponent<SpriteRenderer>();
+            cr.sprite = PixelArt.MakeCloudSprite();
+            cr.sortingOrder = -2;
+        }
+
+        for (int i = 0; i < 20; i++)
+        {
+            float x = i * 5.2f - 1f;
             GameObject tree = new GameObject("Pixel_Tree");
-            tree.transform.position = new Vector3(x, -1.65f, 1f);
-            SpriteRenderer renderer = tree.AddComponent<SpriteRenderer>();
-            renderer.sprite = PixelArt.MakeTreeSprite(i);
-            renderer.sortingOrder = 1;
+            tree.transform.position = new Vector3(x, -1.95f, 0.8f);
+            tree.transform.localScale = new Vector3(2.25f, 2.65f, 1f);
+            SpriteRenderer tr = tree.AddComponent<SpriteRenderer>();
+            tr.sprite = PixelArt.MakeTreeSprite(i);
+            tr.sortingOrder = 1;
+        }
+
+        for (int i = 0; i < 48; i++)
+        {
+            GameObject tuft = new GameObject("Grass_Tuft");
+            tuft.transform.position = new Vector3(i * 1.9f + 0.4f, -2.72f, -0.1f);
+            SpriteRenderer gr = tuft.AddComponent<SpriteRenderer>();
+            gr.sprite = PixelArt.MakeGrassTuftSprite(i);
+            gr.sortingOrder = 2;
         }
     }
 
@@ -360,6 +386,57 @@ public static class PixelArt
         }
         texture.Apply();
         return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 16f);
+    }
+
+    public static Sprite MakeSunSprite()
+    {
+        const int w = 24, h = 24;
+        Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        t.filterMode = FilterMode.Point;
+        Color clear = new Color(0,0,0,0), gold = new Color(1f,0.72f,0.12f), light = new Color(1f,0.88f,0.36f);
+        for (int y=0;y<h;y++) for (int x=0;x<w;x++)
+        {
+            int dx=x-12, dy=y-12;
+            bool ray=((x==11||x==12)&&(y<4||y>19))||((y==11||y==12)&&(x<4||x>19))||(Mathf.Abs(dx)==Mathf.Abs(dy)&&Mathf.Abs(dx)>=8);
+            Color px=dx*dx+dy*dy<=64?(dx*dx+dy*dy>42?light:gold):(ray?gold:clear);
+            t.SetPixel(x,y,px);
+        }
+        t.Apply();
+        return Sprite.Create(t,new Rect(0,0,w,h),new Vector2(0.5f,0.5f),16f);
+    }
+
+    public static Sprite MakePineSprite(int seed)
+    {
+        const int w=24,h=44;
+        Texture2D t=new Texture2D(w,h,TextureFormat.RGBA32,false);
+        t.filterMode=FilterMode.Point;
+        Color clear=new Color(0,0,0,0), trunk=new Color(0.28f,0.16f,0.10f), dark=new Color(0.08f,0.25f,0.24f), green=new Color(0.12f,0.42f,0.36f);
+        for(int y=0;y<h;y++) for(int x=0;x<w;x++)
+        {
+            Color px=clear;
+            if(x>=10&&x<=13&&y<9) px=trunk;
+            int half=Mathf.Clamp((y-5)/2,1,10);
+            if(y>=5&&y<40&&Mathf.Abs(x-12)<=half) px=((x+y+seed)%5==0)?green:dark;
+            if(y>=13&&y<16&&x>=7&&x<=17) px=green;
+            t.SetPixel(x,y,px);
+        }
+        t.Apply();
+        return Sprite.Create(t,new Rect(0,0,w,h),new Vector2(0.5f,0f),16f);
+    }
+
+    public static Sprite MakeGrassTuftSprite(int seed)
+    {
+        const int w=12,h=8;
+        Texture2D t=new Texture2D(w,h,TextureFormat.RGBA32,false);
+        t.filterMode=FilterMode.Point;
+        Color clear=new Color(0,0,0,0), green=new Color(0.14f,0.48f,0.12f), bright=new Color(0.40f,0.78f,0.18f);
+        for(int y=0;y<h;y++) for(int x=0;x<w;x++)
+        {
+            bool blade=(x==2&&y<=4)||(x==3&&y<=6)||(x==5&&y<=5)||(x==7&&y<=7)||(x==9&&y<=4);
+            t.SetPixel(x,y,blade?(((x+y+seed)%3==0)?bright:green):clear);
+        }
+        t.Apply();
+        return Sprite.Create(t,new Rect(0,0,w,h),new Vector2(0.5f,0f),16f);
     }
 
     public static Sprite MakeMountainSprite(int seed)
